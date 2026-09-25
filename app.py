@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 
 PORT = int(os.environ.get("PORT", 5000))
 DEBUG = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+USE_HTTPS = os.environ.get("USE_HTTPS", "false").lower() == "true"
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 CORS(app)
@@ -162,8 +163,12 @@ def update_quantity():
     if isbn in cart:
         cart.pop(isbn) if qty <= 0 else cart.update({isbn: qty})
     return jsonify({"message": "Updated"})
- 
+
 #Entry point
 if __name__ == "__main__":
-    print(f"Bookstore running -> http://0.0.0.0:{PORT} (debug={DEBUG})")
-    app.run(host="0.0.0.0", port = PORT, debug = DEBUG)
+    scheme = "https" if USE_HTTPS else "http"
+    print(f"Bookstore running -> {scheme}://0.0.0.0:{PORT} (debug={DEBUG})")
+    if USE_HTTPS:
+        app.run(host="0.0.0.0", port=PORT, debug=DEBUG, ssl_context="adhoc")
+    else:
+        app.run(host="0.0.0.0", port=PORT, debug=DEBUG)
