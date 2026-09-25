@@ -169,6 +169,6 @@ if __name__ == "__main__":
     scheme = "https" if USE_HTTPS else "http"
     print(f"Bookstore running -> {scheme}://0.0.0.0:{PORT} (debug={DEBUG})")
     if USE_HTTPS:
-        app.run(host="0.0.0.0", port=PORT, debug=DEBUG, ssl_context="adhoc")
+        app.run(host="0.0.0.0", port=PORT, debug=DEBUG, ssl_context=("cert.pem", "key.pem"))
     else:
         app.run(host="0.0.0.0", port=PORT, debug=DEBUG)

@@ -1,5 +1,4 @@
-### Favourite Books Implementation - Assignment 3
-- Jean Palamara, Matthew Docherty, Mudabbirul Saad, Peter Alexander
-
-To run, run requirements txt to ensure Flask is downloaded, run app.py then click on server generated in terminal.
-Can run within VS code or paste server number into web. 
+### Favourite Books Online Store with Docker containerization
+- Code originated from a Software Design and Implementation assignment, Semester 1 2026
+- The coding section of the assignment (what is shown here) was written by myself and Matt
+- The group consisted of Jean Palamara (me), Matthew Docherty, Mudabbirul Saad, Peter Alexander
