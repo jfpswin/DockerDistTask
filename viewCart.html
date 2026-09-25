@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cart — Favourite Books</title>
+  <link href="https://cdn.jsdelivr.net/npm/tabler-icons@1.39.1/iconfont/tabler-icons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<html>
+<div id="app" role="main">
+  <h2 class="sr-only" style="position:absolute;left:-9999px">View Cart — Favourite Books online store</h2>
+
+  <div class="toolbar">
+    <span class="toolbar-title">Favourite Books</span>
+    <div class="toolbar-actions">
+      <a class="toolbar-btn" href="index.html"><i class="ti ti-arrow-left" aria-hidden="true"></i> Back</a>
+    </div>
+  </div>
+
+  <div id="cartView">
+    <div id="cart-container" class="cart-container">
+      <!-- Cart items will be dynamically loaded here -->
+    </div>
+  </div>
+</div>
+
+<script>
+const COVERS = [
+  {bg:'#2C3E50'},{bg:'#8B2635'},{bg:'#1B5E7B'},
+  {bg:'#4A3728'},{bg:'#2D5A27'},{bg:'#5C3566'},
+];
+
+async function loadCart() {
+  const response = await fetch('/api/cart');
+  const cartItems = await response.json();
+
+  const container = document.getElementById('cart-container');
+  container.innerHTML = '';
+
+  const listHTML = `<div class="cart-list">${cartItems.map(displayCartItem).join('')}</div>`;
+  container.innerHTML = listHTML + displayCartSummary(cartItems);
+}
+
+function displayCartItem(item) {
+  const bg = COVERS[item.cover % COVERS.length].bg;
+  return `
+      <div class="cart-item">
+        <div class="cart-cover" style="background:${bg}">
+          <i class="ti ti-book" aria-hidden="true"></i>
+        </div>
+        <div class="cart-item-info">
+          <div class="cart-item-name">${item.name}</div>
+          <div class="cart-item-author">${item.author}</div>
+          <div class="cart-item-edition">${item.edition}</div>
+        </div>
+        <div class="cart-item-actions">
+          <div class="qty-control">
+            <button class="qty-btn" onclick="changeQty(${item.isbn}, ${item.quantity - 1})" aria-label="Decrease quantity"><i class="ti ti-minus"></i></button>
+            <span class="qty-value">${item.quantity}</span>
+            <button class="qty-btn" onclick="changeQty(${item.isbn}, ${item.quantity + 1})" aria-label="Increase quantity"><i class="ti ti-plus"></i></button>
+          </div>
+          <div class="cart-item-price">$${(item.price * item.quantity).toFixed(2)}</div>
+          <button class="remove-btn" onclick="removeItem(${item.isbn})" aria-label="Remove item"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>`;
+}
+
+function displayCartSummary(cartItems) {
+  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const shipping = 3.99;
+  const total = subtotal + shipping;
+
+  return `
+    <div class="order-summary">
+      <div class="summary-title">Order Summary</div>
+      <div class="summary-row">
+        <span class="summary-label">${totalItems} item${totalItems !== 1 ? 's' : ''}</span>
+        <span class="summary-value">$${subtotal.toFixed(2)}</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">Shipping</span>
+        <span class="summary-value">$${shipping.toFixed(2)}</span>
+      </div>
+      <div class="summary-divider"></div>
+      <div class="summary-row summary-total">
+        <span>Total</span>
+        <span>$${total.toFixed(2)}</span>
+      </div>
+      <button class="checkout-btn">
+        <i class="ti ti-credit-card" aria-hidden="true"></i> Checkout
+      </button>
+    </div>`;
+}
+
+async function changeQty(isbn, newQty) {
+  await fetch('/api/cart/update', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ isbn, quantity: newQty })
+  });
+  loadCart();
+}
+
+async function removeItem(isbn) {
+  await fetch('/api/cart/remove', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ isbn })
+  });
+  loadCart();
+}
+
+loadCart();
+</script>
+</html>

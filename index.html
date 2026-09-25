@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Favourite Books</title>
+  <link href="https://cdn.jsdelivr.net/npm/tabler-icons@1.39.1/iconfont/tabler-icons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<html>
+<div id="app" role="main">
+  <h2 class="sr-only" style="position:absolute;left:-9999px">Favourite books website — browse and sort Favourite Books online store</h2>
+  <div class="toolbar">
+    <span class="toolbar-title">Favourite Books</span>
+    <div class="toolbar-actions">
+      <button class="toolbar-btn" onclick="toggleSearch()" aria-label="Search"><i class="ti ti-search" aria-hidden="true"></i>Search</button>
+      <div class="sort-dropdown">
+        <button class="toolbar-btn" onclick="toggleSort()" aria-label="Sort"><i class="ti ti-arrows-sort" aria-hidden="true"></i> Sort</button>
+        <div class="sort-menu" id="sortMenu">
+          <div class="sort-item" onclick="sortBooks('original')"><i class="ti ti-list" aria-hidden="true"></i> Original order</div>
+          <div class="sort-item" onclick="sortBooks('author')"><i class="ti ti-user" aria-hidden="true"></i> By author</div>
+          <div class="sort-item" onclick="sortBooks('pages')"><i class="ti ti-file" aria-hidden="true"></i> By pages</div>
+          <div class="sort-item" onclick="sortBooks('genre')"><i class="ti ti-tag" aria-hidden="true"></i> By genre</div>
+        </div>
+      </div>
+      <a class="toolbar-btn" href="viewCart.html">View Cart</a>
+    </div>
+  </div>
+
+  <div class="search-bar" id="searchBar">
+    <i class="ti ti-search" aria-hidden="true" style="color:rgba(255,255,255,0.6);font-size:16px"></i>
+    <input type="text" id="searchInput" placeholder="Search by title or author…" oninput="liveSearch(this.value)" />
+    <button onclick="toggleSearch()" aria-label="Close search"><i class="ti ti-x"></i></button>
+  </div>
+
+  <div id="homeView" style="display:flex;flex-wrap:wrap;justify-content:center;gap:16px;padding:16px;flex:1">
+    <!-- Cards injected here by renderCards() -->
+  </div>
+
+  <div class="favs-view" id="favsView">
+    <div class="favs-header">
+      <button class="back-btn" onclick="showHome()" aria-label="Back"><i class="ti ti-arrow-left"></i></button>
+      <span class="favs-title">My Favourites</span>
+    </div>
+    <div class="favs-list" id="favsList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const COVERS = [
+  {bg:'#2C3E50',accent:'#E8C547'},
+  {bg:'#8B2635',accent:'#F4C89B'},
+  {bg:'#1B5E7B',accent:'#A8D8A8'},
+  {bg:'#4A3728',accent:'#E8D5B0'},
+  {bg:'#2D5A27',accent:'#F7E8A4'},
+  {bg:'#5C3566',accent:'#FADCB5'},
+];
+
+let books = [];
+let BOOKS_ORIG = [];
+
+fetch('/api/books')
+  .then(r => r.json())
+  .then(data => {
+    BOOKS_ORIG = data.map(b => ({...b, isFavourite: false}));
+    books = BOOKS_ORIG.map(b => ({...b}));
+    renderCards();
+  });
+
+let searchActive = false;
+
+// ─── Render all cards ─────────────────────────────────────────────────────────
+function renderCards() {
+  const homeView = document.getElementById('homeView');
+  homeView.innerHTML = books.map((_, i) => `
+    <div class="book-card" id="bookCard-${i}">
+      <div class="book-cover" id="coverBg-${i}">
+        <span class="badge-genre" id="genreBadge-${i}"></span>
+        <div class="cover-art" id="coverArt-${i}">
+          <div class="cover-spine"></div>
+          <div class="cover-title" id="coverTitle-${i}"></div>
+          <div class="cover-author" id="coverAuthor-${i}"></div>
+        </div>
+      </div>
+      <div class="book-info">
+        <div class="book-name" id="bookName-${i}"></div>
+        <div class="book-author" id="bookAuthor-${i}"></div>
+        <div class="book-meta" id="bookMeta-${i}"></div>
+      </div>
+      <div class="bottom-bar">
+        <button class="show-favs-btn" onclick="addToCart(${i})">
+          <i class="ti ti-heart" id="favIcon-${i}" aria-hidden="true"></i> Add to Cart
+        </button>
+      </div>
+    </div>
+  `).join('');
+
+  // Populate each card after injecting HTML
+  books.forEach((_, i) => displayBook(i));
+}
+
+// ─── Display one book by its index in `books` ─────────────────────────────────
+function displayBook(i) {
+  const b = books[i];
+  const c = COVERS[b.cover % COVERS.length];
+
+  document.getElementById(`coverBg-${i}`).style.background = c.bg;
+  document.getElementById(`coverArt-${i}`).style.background = c.bg;
+  document.getElementById(`coverArt-${i}`).style.borderLeft = `4px solid ${c.accent}`;
+  document.getElementById(`coverTitle-${i}`).textContent = b.name;
+  document.getElementById(`coverTitle-${i}`).style.color = c.accent;
+  document.getElementById(`coverAuthor-${i}`).textContent = b.author;
+  document.getElementById(`genreBadge-${i}`).textContent = b.genre;
+  document.getElementById(`bookName-${i}`).textContent = b.name;
+  document.getElementById(`bookAuthor-${i}`).textContent = 'by ' + b.author;
+  document.getElementById(`bookMeta-${i}`).innerHTML =
+    `<span class="meta-pill"><i class="ti ti-book" aria-hidden="true"></i>${b.edition} ed.</span>
+     <span class="meta-pill"><i class="ti ti-file-text" aria-hidden="true"></i>${b.pages} pages</span>
+     <span class="meta-pill"><i class="ti ti-tag" aria-hidden="true"></i>${b.genre}</span>`;
+
+  const fi = document.getElementById(`favIcon-${i}`);
+  fi.className = b.isFavourite ? 'ti ti-heart-filled' : 'ti ti-heart';
+  fi.style.color = b.isFavourite ? '#C0392B' : 'white';
+}
+
+// ─── Add to cart function ─────────────────────────────────────
+function addToCart(i) {
+  const b = books[i];
+  fetch('/add_item', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ book_id: b.isbn })
+  })
+  .then(r => r.json())
+  .then(data => showToast(data.message))
+  .catch(() => showToast('Error adding to cart'));
+}
+
+// ─── Favourites view ─────────────────────────────────────────────────────────
+function showFavourites() {
+  document.getElementById('homeView').style.display = 'none';
+  const fv = document.getElementById('favsView');
+  fv.classList.add('open');
+  renderFavsList();
+}
+
+function showHome() {
+  document.getElementById('homeView').style.display = 'flex';
+  document.getElementById('favsView').classList.remove('open');
+}
+
+function renderFavsList() {
+  const favs = books.filter(b => b.isFavourite);
+  const el = document.getElementById('favsList');
+  if (favs.length === 0) {
+    el.innerHTML = '<div class="empty-favs"><i class="ti ti-heart-off"></i>No favourites yet.<br>Tap the heart on a book to save it.</div>';
+    return;
+  }
+  el.innerHTML = favs.map(b => {
+    const c = COVERS[b.cover % COVERS.length];
+    return `<div class="fav-row">
+      <div class="fav-cover-sm" style="background:${c.bg}">
+        <i class="ti ti-book" aria-hidden="true"></i>
+      </div>
+      <div class="fav-info">
+        <div class="fav-name">${b.name}</div>
+        <div class="fav-author-sm">${b.author}</div>
+        <div class="fav-pages">${b.pages} pages · ${b.edition} edition</div>
+      </div>
+      <button class="remove-fav-btn" onclick="removeFav(${b.isbn})" aria-label="Remove from favourites">
+        <i class="ti ti-heart-minus"></i>
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function removeFav(isbn) {
+  const b = books.find(x => x.isbn === isbn);
+  if (b) b.isFavourite = false;
+  renderFavsList();
+  showToast('Removed from favourites');
+}
+
+// ─── Search ───────────────────────────────────────────────────────────────────
+function toggleSearch() {
+  searchActive = !searchActive;
+  const sb = document.getElementById('searchBar');
+  sb.classList.toggle('open', searchActive);
+  if (searchActive) document.getElementById('searchInput').focus();
+  else {
+    document.getElementById('searchInput').value = '';
+    books = BOOKS_ORIG.map(b => ({...b, isFavourite: books.find(x => x.isbn === b.isbn)?.isFavourite || false}));
+    renderCards();
+  }
+}
+
+function liveSearch(q) {
+  const lower = q.toLowerCase().trim();
+  const filtered = lower
+    ? BOOKS_ORIG.filter(b =>
+        b.name.toLowerCase().includes(lower) || b.author.toLowerCase().includes(lower)
+      ).map(b => ({...b, isFavourite: books.find(x => x.isbn === b.isbn)?.isFavourite || false}))
+    : BOOKS_ORIG.map(b => ({...b, isFavourite: books.find(x => x.isbn === b.isbn)?.isFavourite || false}));
+  books = filtered;
+  renderCards();
+}
+
+// ─── Sort ─────────────────────────────────────────────────────────────────────
+function toggleSort() {
+  document.getElementById('sortMenu').classList.toggle('open');
+}
+
+function sortBooks(by) {
+  document.getElementById('sortMenu').classList.remove('open');
+  if (by === 'original') books.sort((a,b) => a.isbn - b.isbn);
+  else if (by === 'author') books.sort((a,b) => a.author.localeCompare(b.author));
+  else if (by === 'pages')  books.sort((a,b) => a.pages - b.pages);
+  else if (by === 'genre')  books.sort((a,b) => a.genre.localeCompare(b.genre));
+  renderCards();
+  showToast('Sorted by ' + by);
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+document.addEventListener('click', e => {
+  const menu = document.getElementById('sortMenu');
+  if (!e.target.closest('.sort-dropdown')) menu.classList.remove('open');
+});
+
+</script>
+</html>
